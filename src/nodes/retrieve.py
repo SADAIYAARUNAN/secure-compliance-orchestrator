@@ -16,9 +16,14 @@ dense_embedder = TextEmbedding(model_name=DENSE_MODEL_NAME)
 sparse_embedder = SparseTextEmbedding(model_name=SPARSE_MODEL_NAME)
 
 # Initialize Qdrant Client
-qdrant_url = os.getenv("QDRANT_URL")
-client = QdrantClient(url=qdrant_url) if qdrant_url else QdrantClient(path="./qdrant_data")
-atexit.register(client.close)
+_client = None
+def get_client() -> QdrantClient:
+    global _client
+    if _client is None:
+        qdrant_url = os.getenv("QDRANT_URL")
+        _client = QdrantClient(url=qdrant_url) if qdrant_url else QdrantClient(path="./qdrant_data")
+        atexit.register(_client.close)
+    return _client
 
 
 # MOCK Data Policies
@@ -80,10 +85,11 @@ def seed_knowledge_base() -> None:
     """
     Creates hybrid collection and indexes.
     """
-    if client.collection_exists(COLLECTION_NAME):
+    db = get_client()
+    if db.collection_exists(COLLECTION_NAME):
         return
 
-    client.create_collection(
+    db.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config={
             "dense": models.VectorParams(
@@ -98,7 +104,7 @@ def seed_knowledge_base() -> None:
         }
     )
 
-    if client.count(collection_name=COLLECTION_NAME).count > 0:
+    if db.count(collection_name=COLLECTION_NAME).count > 0:
         return
 
     points = []
@@ -121,7 +127,7 @@ def seed_knowledge_base() -> None:
             )
         )
 
-    client.upsert(collection_name=COLLECTION_NAME, points=points)
+    db.upsert(collection_name=COLLECTION_NAME, points=points)
 
 
 def query_compliance_db(state: AgentState) -> Dict[str, Any]:
@@ -140,6 +146,7 @@ def query_compliance_db(state: AgentState) -> Dict[str, Any]:
 
     try:
         seed_knowledge_base()
+        db = get_client()
 
         dense_query = _embed_dense(query_text)
         sparse_query = _embed_sparse(query_text)
@@ -156,7 +163,7 @@ def query_compliance_db(state: AgentState) -> Dict[str, Any]:
 
 
         # Execute Hybrid Search using Reciprocal rank Fusion
-        response = client.query_points(
+        response = db.query_points(
             collection_name=COLLECTION_NAME,
             prefetch=[
                 models.Prefetch(
