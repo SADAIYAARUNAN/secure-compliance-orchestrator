@@ -1,0 +1,10 @@
+langgraph>=0.0.27
+langchain-core
+langchain-openai
+pydantic>=2.0
+fastapi
+uvicorn
+presidio-analyzer
+presidio-anonymizer
+qdrant-client[fast-embed]
+langgraph-checkpoint-sqlite

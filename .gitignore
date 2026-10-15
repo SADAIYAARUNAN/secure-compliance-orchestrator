@@ -1,0 +1,14 @@
+# Environments
+.venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Local Database & Infrastructure (Qdrant/Docker)
+qdrant_data/
+
+
+# Mac/Windows system files
+.DS_Store
